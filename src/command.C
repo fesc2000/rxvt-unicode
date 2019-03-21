@@ -542,9 +542,14 @@ rxvt_term::key_press (XKeyEvent &ev)
                 break;
 
               case XK_Up:	/* "\033[A" */
+                if (ctrl) { selection_move(0, -1); break;}
               case XK_Down:	/* "\033[B" */
+                if (ctrl) { selection_move(0, 1); break;}
               case XK_Right:	/* "\033[C" */
+                if (ctrl) { selection_move(1, 0); break;}
               case XK_Left:	/* "\033[D" */
+                if (ctrl) { selection_move(-1, 0); break;}
+
                 strcpy (kbuf, "\033[Z");
                 kbuf[2] = "DACB"[keysym - XK_Left];
                 /* do Shift first */
@@ -802,6 +807,12 @@ rxvt_term::key_press (XKeyEvent &ev)
 
           return;
         }
+
+      if (ctrl && (keysym == XK_space))
+      {
+          selection_clear(false);
+          return;
+      }
 
 #if ENABLE_FRILLS || ISO_14755
       // ISO 14755 support

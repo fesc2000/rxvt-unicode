@@ -49,7 +49,7 @@ fill_text (text_t *start, text_t value, int len)
         view_start = 0
 #define CLEAR_SELECTION()                                              \
     selection.beg.row = selection.beg.col                              \
-        = selection.end.row = selection.end.col = 0
+        = selection.end.row = selection.end.col = (int)(selection.op = SELECTION_CLEAR)
 #define CLEAR_ALL_SELECTION()                                          \
     selection.beg.row = selection.beg.col                              \
         = selection.mark.row = selection.mark.col                      \
@@ -90,6 +90,11 @@ fill_text (text_t *start, text_t value, int len)
         XClearArea (dpy, vt, x, y,                                     \
                     (unsigned int)Width2Pixel (num),                   \
                     (unsigned int)Height2Pixel (1), False)
+
+/* what do we want: spaces/tabs are delimiters or cutchars or non-cutchars */
+#define DELIMIT_TEXT(x)		\
+    (unicode::is_space (x) ? 2 : (x) <= 0xff && !!strchr (rs[Rs_cutchars], (x)))
+#define DELIMIT_REND(x)        1
 
 /* ------------------------------------------------------------------------- *
  *                        SCREEN `COMMON' ROUTINES                           *
@@ -2979,6 +2984,171 @@ rxvt_term::selection_click (int clicks, int x, int y) NOTHROW
 
 /* ------------------------------------------------------------------------- */
 /*
+ * From the current selection or cursor, select/copy the next valid word in the
+ * given direction.
+ */
+void ecb_cold
+rxvt_term::selection_move (int col_dir, int row_dir) NOTHROW
+{
+  row_col_t nr;
+  int l;
+  int move_col;
+
+  if (!selection.op)
+  {
+    /* Start at cursor position */
+    selection.clicks = 2;
+    if (!selection.rect
+        && HOOK_INVOKE ((this, HOOK_SEL_EXTEND, DT_END)))
+      {
+        MEvent.clicks = 1; // what a mess
+        selection.screen = current_screen;
+        selection.op = SELECTION_CONT;
+        return;
+      }
+
+    nr.col = screen.cur.col;
+    nr.row = screen.cur.row;
+
+    selection.move_col = -1;
+  }
+  else
+  {
+    /* start at current selection */
+    if (col_dir == -1)
+    {
+      /* to left from begin of current selection */
+      nr.col = selection.beg.col;
+      nr.row = selection.beg.row;
+    }
+    else if (col_dir == 1)
+    {
+      /* to right from end of current selection */
+      nr.col = selection.end.col;
+      nr.row = selection.end.row;
+    }
+      /* unless there is a saved target column, set a default
+       * target column in nr.col, which is either
+       * - the middle of the current one-line selection, or
+       * - the start or end of the current multi-line selection
+       */
+    else if (row_dir == -1)
+    {
+      if (selection.beg.row != selection.end.row)
+      {
+        nr.col = selection.beg.col;
+        nr.row = selection.beg.row;
+      }
+      else
+      {
+        nr.col = (selection.end.col + selection.beg.col) / 2;
+        nr.row = selection.beg.row;
+      }
+    }
+    else if (row_dir == 1)
+    {
+      if (selection.beg.row != selection.end.row)
+      {
+        nr.col = selection.end.col;
+        nr.row = selection.end.row;
+      }
+      else
+      {
+        nr.col = (selection.end.col + selection.beg.col) / 2;
+        nr.row = selection.end.row;
+      }
+    }
+  }
+
+  /* if there is already a saved target column, use it */
+  move_col = (selection.move_col == -1) ? nr.col : selection.move_col;
+
+  if (row_dir)
+  {
+    /* search upwards/downwards for a line that contains text */
+    while (((nr.row + row_dir) >= (top_row)) &&
+           ((nr.row + row_dir) <= (nrow - 1)))
+    {
+      nr.row += row_dir;
+
+      /* search to left and right from the target column until
+       * text is found
+       */
+      int l = 1;
+      while ((move_col - l >= 0) || (move_col + l < ncol))
+      {
+        nr.col = move_col - l;
+        if (nr.col >= 0)
+        {
+          if (DELIMIT_TEXT (ROW(nr.row).t[nr.col]) == 0)
+            break;
+        }
+
+        nr.col = move_col + l;
+        if (nr.col < ncol)
+        {
+          if (DELIMIT_TEXT (ROW(nr.row).t[nr.col]) == 0)
+            break;
+        }
+        nr.col = -1;
+        l++;
+      }
+
+      if (nr.col != -1)
+        break;
+    }
+
+    if (nr.col == -1)
+      return;
+  }
+  else if (col_dir)
+  {
+    int found = 0;
+
+    /* search left or right for next text char */
+    while ((nr.col > 0) && (nr.col < ncol - 1))
+    {
+      nr.col += col_dir;
+
+      if (DELIMIT_TEXT (ROW(nr.row).t[nr.col]) == 0)
+      {
+        found = 1;
+        break;
+      }
+    }
+
+    if (!found)
+      nr.col = -1;
+  }
+
+  if (nr.col == -1)
+    return;
+
+  /* move viewport if required */
+  if (nr.row < view_start)
+      scr_changeview (nr.row);
+  else if (nr.row >= view_start + nrow-1)
+      scr_changeview (nr.row - nrow+1);
+
+  /* simulate double-click on found location */
+  selection_start_colrow (nr.col, nr.row - view_start);
+  selection_extend_colrow (nr.col, nr.row - view_start,
+                           // selection.mark.col,
+                           //selection.mark.row - view_start,
+                           0, /* button 3     */
+                           1, /* button press */
+                           0);/* click change */
+
+  /* immedeately copy selection (?) */
+  selection_make(0);
+
+  /* remember the target column for up/downward movement */
+  if (row_dir)
+    selection.move_col = move_col;
+}
+
+/* ------------------------------------------------------------------------- */
+/*
  * Mark a selection at the specified col/row
  */
 void ecb_cold
@@ -2991,6 +3161,8 @@ rxvt_term::selection_start_colrow (int col, int row) NOTHROW
 
   selection.mark.row = clamp (selection.mark.row, top_row, nrow - 1);
   selection.mark.col = clamp (selection.mark.col,       0, ncol - 1);
+
+  selection.move_col = -1;
 
   while (selection.mark.col > 0
          && ROW(selection.mark.row).t[selection.mark.col] == NOCHAR)
@@ -3013,10 +3185,6 @@ rxvt_term::selection_start_colrow (int col, int row) NOTHROW
  * We now only find out the boundary in one direction
  */
 
-/* what do we want: spaces/tabs are delimiters or cutchars or non-cutchars */
-#define DELIMIT_TEXT(x)		\
-    (unicode::is_space (x) ? 2 : (x) <= 0xff && !!strchr (rs[Rs_cutchars], (x)))
-#define DELIMIT_REND(x)        1
 
 void ecb_cold
 rxvt_term::selection_delimit_word (enum page_dirn dirn, const row_col_t *mark, row_col_t *ret) NOTHROW

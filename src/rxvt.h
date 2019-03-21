@@ -959,6 +959,7 @@ struct selection_t
   row_col_t         beg;        /* beginning of selection   <= mark          */
   row_col_t         mark;       /* point of initial click   <= end           */
   row_col_t         end;        /* one character past end point              */
+  int               move_col;   /* target column for keyboard movement       */
   wchar_t          *clip_text;  /* text copied to the clipboard              */
   unsigned int      clip_len;   /* length of clipboard text                  */
 };
@@ -1459,6 +1460,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void selection_click (int clicks, int x, int y) NOTHROW;
   void selection_extend (int x, int y, int flag) NOTHROW;
   void selection_rotate (int x, int y) NOTHROW;
+  void selection_move (int col_dir, int row_dir) NOTHROW;
 
   // xdefaults.C
   void rxvt_usage (int type);
