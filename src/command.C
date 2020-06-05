@@ -793,9 +793,10 @@ rxvt_term::key_press (XKeyEvent &ev)
             }
         }
 
-      if (ctrl && meta && (keysym == XK_c || keysym == XK_v))
+      if ((ctrl && meta && (keysym == XK_c || keysym == XK_v)) || 
+	  (keysym == XF86XK_Paste) || (keysym == XF86XK_Copy))
         {
-          if (keysym == XK_v)
+          if ((keysym == XK_v) || (keysym == XF86XK_Paste))
             selection_request (ev.time, Sel_Clipboard);
           else if (selection.len > 0)
             {

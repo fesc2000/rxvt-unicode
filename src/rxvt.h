@@ -69,6 +69,7 @@ typedef  int32_t tlen_t_; // specifically for use in the line_t structure
 
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
+#include <X11/XF86keysym.h>
 #include <X11/keysymdef.h>
 #include <X11/Xatom.h>
 
