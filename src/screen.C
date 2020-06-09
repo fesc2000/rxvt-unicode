@@ -2994,19 +2994,10 @@ rxvt_term::selection_move (int col_dir, int row_dir) NOTHROW
   int l;
   int move_col;
 
-  if (!selection.op)
+  if (selection.op == SELECTION_CLEAR)
   {
-    /* Start at cursor position */
+    /* Start selection at cursor position, fake double click */
     selection.clicks = 2;
-    if (!selection.rect
-        && HOOK_INVOKE ((this, HOOK_SEL_EXTEND, DT_END)))
-      {
-        MEvent.clicks = 1; // what a mess
-        selection.screen = current_screen;
-        selection.op = SELECTION_CONT;
-        return;
-      }
-
     nr.col = screen.cur.col;
     nr.row = screen.cur.row;
 
